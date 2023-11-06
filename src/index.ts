@@ -5,6 +5,8 @@ import { User } from './models/User'
 import { Account } from './models/Account'
 import { UserDatabase } from './database/UserDatabase'
 import { AccountDatabase } from './database/AccountDatabase'
+import { UserController } from './controller/UserController'
+import { AccountController } from './controller/AccountController'
 
 const app = express()
 
@@ -33,103 +35,18 @@ app.get("/ping", async (req: Request, res: Response) => {
     }
 })
 
-app.get("/users", async (req: Request, res: Response) => {
-    try {
-        const q = req.query.q as string | undefined
+const userController = new UserController()
 
-        const userDatabase = new UserDatabase()
-        const usersDB = await userDatabase.findUsers(q)
+// é da User
+app.get("/users", userController.getUsers)
 
-        const users: User[] = usersDB.map((userDB) => new User(
-            userDB.id,
-            userDB.name,
-            userDB.email,
-            userDB.password,
-            userDB.created_at
-        ))
+// é da User
+app.post("/users", userController.postUsers)
 
-        res.status(200).send(users)
-    } catch (error) {
-        console.log(error)
 
-        if (req.statusCode === 200) {
-            res.status(500)
-        }
+const accountController = new AccountController()
 
-        if (error instanceof Error) {
-            res.send(error.message)
-        } else {
-            res.send("Erro inesperado")
-        }
-    }
-})
-
-app.post("/users", async (req: Request, res: Response) => {
-    try {
-        const { id, name, email, password } = req.body
-
-        if (typeof id !== "string") {
-            res.status(400)
-            throw new Error("'id' deve ser string")
-        }
-
-        if (typeof name !== "string") {
-            res.status(400)
-            throw new Error("'name' deve ser string")
-        }
-
-        if (typeof email !== "string") {
-            res.status(400)
-            throw new Error("'email' deve ser string")
-        }
-
-        if (typeof password !== "string") {
-            res.status(400)
-            throw new Error("'password' deve ser string")
-        }
-
-        const userDatabase = new UserDatabase()
-        const userDBExists = await userDatabase.findUserById(id)
-
-        if (userDBExists) {
-            res.status(400)
-            throw new Error("'id' já existe")
-        }
-
-        const newUser = new User(
-            id,
-            name,
-            email,
-            password,
-            new Date().toISOString()
-        ) // yyyy-mm-ddThh:mm:sssZ
-
-        const newUserDB: UserDB = {
-            id: newUser.getId(),
-            name: newUser.getName(),
-            email: newUser.getEmail(),
-            password: newUser.getPassword(),
-            created_at: newUser.getCreatedAt()
-        }
-
-        await userDatabase.insertUser(newUserDB)
-
-        res.status(201).send(newUser)
-    } catch (error) {
-        console.log(error)
-
-        if (req.statusCode === 200) {
-            res.status(500)
-        }
-
-        if (error instanceof Error) {
-            res.send(error.message)
-        } else {
-            res.send("Erro inesperado")
-        }
-    }
-})
-
+// é da Accounts
 app.get("/accounts", async (req: Request, res: Response) => {
     try {
         const accountDatabase = new AccountDatabase()
@@ -158,6 +75,7 @@ app.get("/accounts", async (req: Request, res: Response) => {
     }
 })
 
+// é da Accounts
 app.get("/accounts/:id/balance", async (req: Request, res: Response) => {
     try {
         const id = req.params.id
@@ -195,7 +113,7 @@ app.get("/accounts/:id/balance", async (req: Request, res: Response) => {
     }
 })
 
-
+// é da Accounts
 app.post("/accounts", async (req: Request, res: Response) => {
     try {
         const { id, ownerId } = req.body
@@ -250,48 +168,5 @@ app.post("/accounts", async (req: Request, res: Response) => {
     }
 })
 
-app.put("/accounts/:id/balance", async (req: Request, res: Response) => {
-    try {
-        const id = req.params.id
-        const value = req.body.value
-
-        if (typeof value !== "number") {
-            res.status(400)
-            throw new Error("'value' deve ser number")
-        }
-
-        const accountDatabase = new AccountDatabase()
-        const accountDB = await accountDatabase.findAccountById(id)
-
-        if (!accountDB) {
-            res.status(404)
-            throw new Error("'id' não encontrado")
-        }
-
-        const account = new Account(
-            accountDB.id,
-            accountDB.balance,
-            accountDB.owner_id,
-            accountDB.created_at
-        )
-
-        const newBalance = account.getBalance() + value
-        account.setBalance(newBalance)
-
-        await accountDatabase.updateBalanceById(id, newBalance)
-        
-        res.status(200).send(account)
-    } catch (error) {
-        console.log(error)
-
-        if (req.statusCode === 200) {
-            res.status(500)
-        }
-
-        if (error instanceof Error) {
-            res.send(error.message)
-        } else {
-            res.send("Erro inesperado")
-        }
-    }
-})
+// é da Accounts
+app.put("/accounts/:id/balance", accountController.updateBalance)
